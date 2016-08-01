@@ -1,0 +1,70 @@
+I want to document some terminology to use for aspects of sudoku
+puzzles, solutions and strategies.  I've found this terminology on various
+websites.  There doesn't seem to be a generally agreed upon
+terminology, so I'm just documenting whatever stuck with me.
+
+== Terminology about puzzle aspects ==
+
+* I'll a sudoku puzzle a "puzzle"
+
+* Rows and columns are labeled 1 through 9.
+
+* Each 3x3 section is called a box.  Boxes are also labeled 1 through
+  9 in row major order.
+
+* A collection of 9 cells (a row, column, or 3x3 box) is called a
+  "unit". 
+
+* The intersection of a row and column is a "cell".
+
+* The other cells in a unit are that cell's "peers".  More
+  generally, the union of all the other cells in the units a cell
+  belongs to are its peers.
+
+
+== Terminology about solving strategy ==
+
+* cells can be assigned or unassigned
+
+* An unassigned cell has a list of "possibilities" associated with it,
+  which are the values which can be assigned to it without violating
+  any constraints.
+
+=== Patterns ===
+
+* A "forced move" refers to an unassigned cell with only one
+  possibility.  This single possibility can be immediately assigned to
+  the cell.
+
+* A "pin" is a cell which is the only cell in a unit which can contain
+  a particular value.  This means that value can be assigned
+  immediately to the cell.
+
+* "Naked set": If n unassigned cells in a unit collectively contain
+  exactly n possibilities, then those possibilities can be removed
+  from any other cells in that unit.  A "simple naked set" is a naked
+  set where each of the n cells contains exactly the same set of n
+  possibilities.  This deserves special mention simply because it's
+  easier to spot than naked sets in general.
+
+* "Hidden set": the inverse of naked sets.  If n values are
+  collectively contained in only n cells in a unit, then any other
+  values can be removed from the possibilities of those n cells.  For
+  example, if two cells in a unit contain the possibilities <12> and
+  <123>, and no other cells in that unit contain 1 or 2, then those
+  two cells must contain one and 2, so the 3 can be removed from the
+  possibilities list of the second cell.  A "simple hidden set" is to
+  a "hidden set" what a "simple naked set" is to a "naked set".
+
+* "Remote naked pairs": If two cells A and B in a unit have the same
+  two possibilities XY, they form a "naked pair"; one will be X and
+  the other Y.  If cell B also forms a naked pair in another unit
+  with cell C, then A and C are "complementary pairs"; whatever A
+  is, C must be the same.  If C in turn forms a naked pair with D in
+  yet another block, then A and D form a "remote naked pair"; if A is
+  X, D must be Y, and vice versa.  Thus, any cell that is a peer of
+  both A and D cannot contain X or Y! (Copied from the Sudoku Susser
+  manual).
+
+
+
