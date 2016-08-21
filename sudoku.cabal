@@ -25,7 +25,7 @@ homepage:            https://github.com/ajenkinski/sudoku-solvers
 -- license:             
 
 -- The file containing the license text.
-license-file:        LICENSE
+-- license-file:        LICENSE
 
 -- The package author(s).
 author:              Adam Jenkins
@@ -60,7 +60,7 @@ executable LogicSolver
   other-extensions:    DeriveGeneric, DeriveAnyClass
   
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.8 && <4.9, containers >=0.5 && <0.6, parallel >=3.2 && <3.3, array >=0.5 && <0.6, pretty >=1.1 && <1.2, deepseq >=1.4 && <1.5
+  build-depends:       base, containers, parallel, array, pretty, deepseq
   
   -- Directories containing source files.
   -- hs-source-dirs:      
@@ -81,7 +81,7 @@ executable AlgoXSolver
   other-extensions:    DeriveGeneric, DeriveAnyClass
   
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.8 && <4.9, containers >=0.5 && <0.6, parallel >=3.2 && <3.3, array >=0.5 && <0.6, pretty >=1.1 && <1.2, deepseq >=1.4 && <1.5
+  build-depends:       base, containers, parallel, array, pretty, deepseq
   
   -- Directories containing source files.
   -- hs-source-dirs:      
@@ -95,5 +95,5 @@ Test-Suite test-sudoku
   type: exitcode-stdio-1.0
   main-is: SudokuTestQC.hs
   other-modules: Sudoku, TestData
-  build-depends: base >=4.8 && <4.9, containers >=0.5 && <0.6, parallel >=3.2 && <3.3, array >=0.5 && <0.6, pretty >=1.1 && <1.2, deepseq >=1.4 && <1.5, QuickCheck >=2.8 && <2.9
+  build-depends: base, containers, parallel, array, pretty, deepseq, QuickCheck
 
