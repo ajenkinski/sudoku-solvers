@@ -73,7 +73,7 @@ forcedMoveSimplifier s =
 -- value to it.
 
 pinnedSquareSimplifier :: Simplifier
-pinnedSquareSimplifier s = logSolution (findJust tryGroup allGroups)
+pinnedSquareSimplifier s = logSolution $ findJust tryGroup allGroups
   where
     tryGroup group = findJust tryValue unassigned
         where
