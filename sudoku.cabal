@@ -60,7 +60,7 @@ executable LogicSolver
   other-extensions:    DeriveGeneric, DeriveAnyClass
   
   -- Other library packages from which modules are imported.
-  build-depends:       base, containers, parallel, array, pretty, deepseq
+  build-depends:       base, containers, parallel, array, pretty, deepseq, mtl
   
   -- Directories containing source files.
   -- hs-source-dirs:      

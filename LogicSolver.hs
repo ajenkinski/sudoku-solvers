@@ -18,9 +18,10 @@ import Data.Maybe (mapMaybe, listToMaybe, fromJust, isJust)
 import System.Environment (getArgs)
 import System.Console.GetOpt
 import qualified Text.PrettyPrint as P
-import Text.PrettyPrint (($$), (<>), (<+>), ($+$))
+import Text.PrettyPrint (($$), (<>), (<+>), vcat)
 import Sudoku
 import Control.Monad (foldM, when, unless, guard)
+import Control.Monad.Writer (WriterT, tell, runWriterT, lift, writer)
 import qualified System.IO as SIO
 import qualified Control.Parallel.Strategies as PS
 import qualified Data.IntMap as IM
@@ -44,19 +45,25 @@ also take in a P.Doc which contains descriptions of all the
 simplifications done to the board so far, and return a new doc with a
 description of any new simplifications appended.  -}
 
-type Simplifier = (Sudoku, P.Doc) -> Maybe (Sudoku, P.Doc)
+type LogWriter a = WriterT [P.Doc] Maybe a
+type Simplifier = Sudoku -> LogWriter Sudoku
+
+logSolution :: Maybe (Sudoku, P.Doc) -> LogWriter Sudoku
+logSolution maybeSolution = do
+  (s, d) <- lift maybeSolution
+  tell [d]
+  return s
 
 -- | A forced move is an unassigned cell with only one value in its
 -- possibilities list, so it's forced to have that value.  This
 -- simplifier makes the first forced move it finds.
 
 forcedMoveSimplifier :: Simplifier
-forcedMoveSimplifier (s, d) =
-    do (c, v) <- listToMaybe [(c,v) | (c, Empty [v]) <- emptySquares s]
-       return (assignValue s (c,v), describe (c,v))
-    where
-      describe (c,v) =
-          d $+$ P.text "Forced move:" <+> doc c <+> P.text "=" <+> doc v
+forcedMoveSimplifier s =
+    do (c, v) <- lift $ listToMaybe [(c,v) | (c, Empty [v]) <- emptySquares s]
+       tell [P.text "Forced move:" <+> doc c <+> P.text "=" <+> doc v]
+       return (assignValue s (c,v))
+
 
 -- | If only a single square in a group can contain a particular
 -- value, then that square is called a "pinned" square.  For example,
@@ -66,20 +73,20 @@ forcedMoveSimplifier (s, d) =
 -- value to it.
 
 pinnedSquareSimplifier :: Simplifier
-pinnedSquareSimplifier (s,d) = findJust tryGroup allGroups
-    where
-      tryGroup group = findJust tryValue unassigned
-          where
-            unassigned = [1..9] \\ [v | (_,Assigned v) <- squares]
-            tryValue v =
-                case [c | (c, Empty vs) <- squares, elem v vs] of
-                  [c] -> Just (assignValue s (c,v), describe group (c,v))
-                  _ -> Nothing
-            squares = groupSquares s group
-      describe group (c,v) =
-          d $+$ P.text "Pinned square: in" <+> doc group
-          <> P.text ", only cell" <+> doc c
-          <+> P.text "can contain" <+> doc v
+pinnedSquareSimplifier s = logSolution (findJust tryGroup allGroups)
+  where
+    tryGroup group = findJust tryValue unassigned
+        where
+          unassigned = [1..9] \\ [v | (_,Assigned v) <- squares]
+          tryValue v =
+              case [c | (c, Empty vs) <- squares, v `elem` vs] of
+                [c] -> Just (assignValue s (c,v), describe group (c,v))
+                _ -> Nothing
+          squares = groupSquares s group
+    describe group (c,v) =
+        P.text "Pinned square: in" <+> doc group
+        <> P.text ", only cell" <+> doc c
+        <+> P.text "can contain" <+> doc v
 
 ------------------
 
@@ -111,8 +118,8 @@ findTuple n all_items = findJust trySubset (ssolk n all_items)
             keys = map fst items
             vals = foldl1 union (map snd items)
             del_items = [(k,v) |
-                         (k,vs) <- all_items, notElem k keys,
-                         v <- vs, elem v vals]
+                         (k,vs) <- all_items, k `notElem`keys,
+                         v <- vs, v `elem`vals]
 
 cmpFst :: Ord a => (a, b) -> (a, c) -> Ordering
 cmpFst (a,_) (b,_) = compare a b
@@ -138,7 +145,7 @@ groupByFst pairs = [(a, b : map snd rest) | (a,b):rest <- groups]
 -- those two cells' possible values lists.
 
 hiddenSetSimplifier :: Simplifier
-hiddenSetSimplifier (s,d) = findJust tryN [2..8]
+hiddenSetSimplifier s = logSolution $ findJust tryN [2..8]
     where
       tryN n = findJust (tryGroup n) allGroups
       tryGroup n group =
@@ -150,7 +157,7 @@ hiddenSetSimplifier (s,d) = findJust tryN [2..8]
                     groupByFst [(v,c) | (c, Empty vs) <- squares, v <- vs]
                 squares = groupSquares s group
       describe group tuple coords to_remove =
-          d $+$ P.text "Hidden set" <+> doc tuple
+          P.text "Hidden set" <+> doc tuple
                 <+> P.text "in cells" <+> doc coords
                 <+> P.text "in" <+> doc group
                 <> P.text ".  Deleting" <+> doc to_remove
@@ -160,7 +167,7 @@ hiddenSetSimplifier (s,d) = findJust tryN [2..8]
 -- cell in that group can contain any of those N values.
 
 nakedSetSimplifier :: Simplifier
-nakedSetSimplifier (s,d) = findJust tryN [2..8]
+nakedSetSimplifier s = logSolution $ findJust tryN [2..8]
     where
       tryN n = findJust (tryGroup n) allGroups
       tryGroup n group =
@@ -170,7 +177,7 @@ nakedSetSimplifier (s,d) = findJust tryN [2..8]
                      describe group coords tuple to_remove)
           where empties = [(c,vs) | (c, Empty vs) <- groupSquares s group]
       describe group coords tuple to_remove =
-          d $+$ P.text "Naked set" <+> doc tuple
+          P.text "Naked set" <+> doc tuple
                 <+> P.text "in cells" <+> doc coords
                 <+> P.text "in" <+> doc group
                 <> P.text ".  Deleting" <+> doc to_remove
@@ -197,7 +204,7 @@ isInGroup coord block     = blockOfCoord coord == block
 -- can be removed from any other squares in that row or column.
 
 intersectionRemovalSimplifier :: Simplifier
-intersectionRemovalSimplifier (s,d) = findJust tryGroup rowsAndCols
+intersectionRemovalSimplifier s = logSolution $ findJust tryGroup rowsAndCols
     where
       rowsAndCols = [Row r | r <- [1..9]] ++ [Col c | c <- [1..9]]
 
@@ -219,7 +226,7 @@ intersectionRemovalSimplifier (s,d) = findJust tryGroup rowsAndCols
 
       -- Return a list of the coordinates in group of squares which have val as a possible
       groupValSquares           :: Group -> Value -> [Coord]
-      groupValSquares group val = [c | (c, Empty vs) <- groupSquares s group, elem val vs]
+      groupValSquares group val = [c | (c, Empty vs) <- groupSquares s group, val `elem` vs]
 
       -- If any square in group can contain val, and the only squares in group that can contain
       -- val are the squares which intersect with otherGroup, then remove val as a possible
@@ -236,7 +243,7 @@ intersectionRemovalSimplifier (s,d) = findJust tryGroup rowsAndCols
                        describe group otherGroup coordsToRemove val)
 
       describe group otherGroup otherSquares val =
-          d $+$ P.text "In" <+> doc group <> P.text "," <+> doc val
+          P.text "In" <+> doc group <> P.text "," <+> doc val
             <+> P.text "can only be in" <+> doc otherGroup <> P.text "."
             <+> P.text "Deleting" <+> doc val <+> P.text "from"
             <+> doc otherSquares
@@ -254,7 +261,7 @@ intersectionRemovalSimplifier (s,d) = findJust tryGroup rowsAndCols
 -- remove that value from other squares in those columns.
 
 simpleXWingSimplifier :: Simplifier
-simpleXWingSimplifier (s,d) = findJust tryPairOfGroups groupPairs
+simpleXWingSimplifier s = logSolution $ findJust tryPairOfGroups groupPairs
     where
       groupPairs = ssolk 2 (map Row [1..9]) ++ ssolk 2 (map Col [1..9])
       tryPairOfGroups [g1, g2] =
@@ -302,7 +309,7 @@ simpleXWingSimplifier (s,d) = findJust tryPairOfGroups groupPairs
                    return (r,c)
 
       describe group1 group2 g1Coords g2Coords valToRemove coordsToRemove =
-          d $+$ P.text "Found X-Wing in" <+> doc group1 <+> P.text "and" <+> doc group2
+          P.text "Found X-Wing in" <+> doc group1 <+> P.text "and" <+> doc group2
             <+> P.text ", in" <+> doc g1Coords <+> P.text "and" <+> doc g2Coords <> P.text "."
             <+> P.text "Deleting" <+> doc valToRemove <+> P.text "from" <+> doc coordsToRemove
 
@@ -378,11 +385,12 @@ isSolution s = all (isAssigned.snd) (allSquares s)
 -- description of the steps used to solve the puzzle.
 
 solve :: Sudoku -> (Sudoku, P.Doc)
-solve s = solve' (s, P.empty)
+solve s = let (solution, docs) = solve' (s, []) in (solution, vcat docs)
     where solve' sd =
-              case findJust ($ sd) simplifiers of
-                Just sd' -> solve' sd'
-                Nothing -> sd
+            let applySimplifier f = runWriterT (writer sd >>= f) in
+            case findJust applySimplifier simplifiers of
+              Just sd' -> solve' sd'
+              Nothing -> sd
 
 difficultSample =
     "001000600" ++
@@ -460,7 +468,7 @@ doParFile file outputUnsolved = do
   contents <- readFile file
   let puzzleStrings = words contents
       puzzles = map parseSudoku puzzleStrings
-      solutions = (map (fst.solve) puzzles) `PS.using` strategy
+      solutions = map (fst.solve) puzzles `PS.using` strategy
       (solved, unsolved) = partition (isSolution.fst) (zip solutions puzzleStrings)
       numSolved = length solved
       numPuzzles = length puzzles
