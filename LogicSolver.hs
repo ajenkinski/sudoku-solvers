@@ -13,18 +13,18 @@ module Main ( main
             , parseOpts
 ) where
 
-import Data.List (find, tails, partition, (\\), group, sort, union, groupBy, sortBy, nub)
-import Data.Maybe (mapMaybe, listToMaybe, fromJust, isJust)
-import System.Environment (getArgs)
-import System.Console.GetOpt
-import qualified Text.PrettyPrint as P
-import Text.PrettyPrint (($$), (<>), (<+>), vcat)
-import Sudoku
 import Control.Monad (foldM, when, unless, guard)
 import Control.Monad.Writer (WriterT, tell, runWriterT, lift, writer)
-import qualified System.IO as SIO
+import Data.List (find, tails, partition, (\\), group, sort, union, groupBy, sortBy, nub)
+import Data.Maybe (mapMaybe, listToMaybe, fromJust, isJust)
+import Sudoku
+import System.Console.GetOpt
+import System.Environment (getArgs)
+import Text.PrettyPrint (($$), (<>), (<+>), vcat)
 import qualified Control.Parallel.Strategies as PS
 import qualified Data.IntMap as IM
+import qualified System.IO as SIO
+import qualified Text.PrettyPrint as P
 
 -- convert any showable object to a P.Doc
 doc :: Show a => a -> P.Doc
