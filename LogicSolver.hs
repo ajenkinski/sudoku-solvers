@@ -234,7 +234,7 @@ intersectionRemovalSimplifier s = findFirst tryGroup rowsAndCols
           let groupCoords = groupValSquares group val
               otherGroupCoords = groupValSquares otherGroup val
               coordsToRemove = otherGroupCoords \\ groupCoords
-          in do guard (not (null groupCoords || not (null (groupCoords \\ otherGroupCoords)) || null coordsToRemove)) 
+          in do guard (not (null groupCoords) && null (groupCoords \\ otherGroupCoords) && not (null coordsToRemove))
                 addLog (describe group otherGroup coordsToRemove val)
                 return (removePossibleValues s [(crd, [val]) | crd <- coordsToRemove])
 
