@@ -17,6 +17,7 @@ import Control.Monad (foldM, when, unless, guard)
 import Control.Monad.Writer (WriterT, tell, runWriterT, lift, writer)
 import Data.List (find, tails, partition, (\\), group, sort, union, groupBy, sortBy, nub)
 import Data.Maybe (mapMaybe, listToMaybe, fromJust, isJust)
+import Control.Applicative (Alternative, (<|>), empty)
 import Sudoku
 import System.Console.GetOpt
 import System.Environment (getArgs)
@@ -30,12 +31,11 @@ import qualified Text.PrettyPrint as P
 doc :: Show a => a -> P.Doc
 doc = P.text . show
 
--- (findJust f xs) returns the result of (f x) for the first x in xs
--- for which (f x) returns Just, or if no such element is found,
--- returns Nothing.
 
-findJust      :: (a -> Maybe b) -> [a] -> Maybe b
-findJust f xs = listToMaybe (mapMaybe f xs)
+-- Finds the first element of a list for which the given function returns 
+-- a non-empty value
+findFirst :: Alternative f => (a -> f b) -> [a] -> f b
+findFirst f = foldr ((<|>) . f) empty
 
 {-| A simplifier is a function which takes a Sudoku board, and tries
 to eliminate some of the possible values from the empty squares'
@@ -48,11 +48,8 @@ description of any new simplifications appended.  -}
 type LogWriter a = WriterT [P.Doc] Maybe a
 type Simplifier = Sudoku -> LogWriter Sudoku
 
-logSolution :: Maybe (Sudoku, P.Doc) -> LogWriter Sudoku
-logSolution maybeSolution = do
-  (s, d) <- lift maybeSolution
-  tell [d]
-  return s
+addLog :: P.Doc -> LogWriter ()
+addLog doc = tell [doc]
 
 -- | A forced move is an unassigned cell with only one value in its
 -- possibilities list, so it's forced to have that value.  This
@@ -61,7 +58,7 @@ logSolution maybeSolution = do
 forcedMoveSimplifier :: Simplifier
 forcedMoveSimplifier s =
     do (c, v) <- lift $ listToMaybe [(c,v) | (c, Empty [v]) <- emptySquares s]
-       tell [P.text "Forced move:" <+> doc c <+> P.text "=" <+> doc v]
+       addLog (P.text "Forced move:" <+> doc c <+> P.text "=" <+> doc v)
        return (assignValue s (c,v))
 
 
@@ -73,15 +70,16 @@ forcedMoveSimplifier s =
 -- value to it.
 
 pinnedSquareSimplifier :: Simplifier
-pinnedSquareSimplifier s = logSolution $ findJust tryGroup allGroups
+pinnedSquareSimplifier s = findFirst tryGroup allGroups
   where
-    tryGroup group = findJust tryValue unassigned
+    tryGroup group = findFirst tryValue unassigned
         where
           unassigned = [1..9] \\ [v | (_,Assigned v) <- squares]
           tryValue v =
               case [c | (c, Empty vs) <- squares, v `elem` vs] of
-                [c] -> Just (assignValue s (c,v), describe group (c,v))
-                _ -> Nothing
+                [c] -> do addLog (describe group (c,v))
+                          return (assignValue s (c,v))
+                _ -> empty
           squares = groupSquares s group
     describe group (c,v) =
         P.text "Pinned square: in" <+> doc group
@@ -108,7 +106,7 @@ ssolk k xs
 findTuple :: (Eq key, Ord val)
              => Int -> [(key, [val])]
              -> Maybe ([key], [val], [(key,val)])
-findTuple n all_items = findJust trySubset (ssolk n all_items)
+findTuple n all_items = findFirst trySubset (ssolk n all_items)
     where
       trySubset items
           | length vals == n && not (null del_items)
@@ -145,14 +143,14 @@ groupByFst pairs = [(a, b : map snd rest) | (a,b):rest <- groups]
 -- those two cells' possible values lists.
 
 hiddenSetSimplifier :: Simplifier
-hiddenSetSimplifier s = logSolution $ findJust tryN [2..8]
+hiddenSetSimplifier s = findFirst tryN [2..8]
     where
-      tryN n = findJust (tryGroup n) allGroups
+      tryN n = findFirst (tryGroup n) allGroups
       tryGroup n group =
-          do (tuple, coords, del_vals) <- findTuple n val_coords
+          do (tuple, coords, del_vals) <- lift (findTuple n val_coords)
              let to_remove = groupByFst [(c, v)  | (v, c) <- del_vals]
-             return (removePossibleValues s to_remove,
-                     describe group tuple coords to_remove)
+             addLog (describe group tuple coords to_remove)
+             return (removePossibleValues s to_remove)
           where val_coords =
                     groupByFst [(v,c) | (c, Empty vs) <- squares, v <- vs]
                 squares = groupSquares s group
@@ -167,14 +165,14 @@ hiddenSetSimplifier s = logSolution $ findJust tryN [2..8]
 -- cell in that group can contain any of those N values.
 
 nakedSetSimplifier :: Simplifier
-nakedSetSimplifier s = logSolution $ findJust tryN [2..8]
+nakedSetSimplifier s = findFirst tryN [2..8]
     where
-      tryN n = findJust (tryGroup n) allGroups
+      tryN n = findFirst (tryGroup n) allGroups
       tryGroup n group =
-          do (coords, tuple, del_coords) <- findTuple n empties
+          do (coords, tuple, del_coords) <- lift (findTuple n empties)
              let to_remove = groupByFst del_coords
-             return (removePossibleValues s to_remove,
-                     describe group coords tuple to_remove)
+             addLog (describe group coords tuple to_remove)
+             return (removePossibleValues s to_remove)
           where empties = [(c,vs) | (c, Empty vs) <- groupSquares s group]
       describe group coords tuple to_remove =
           P.text "Naked set" <+> doc tuple
@@ -204,16 +202,16 @@ isInGroup coord block     = blockOfCoord coord == block
 -- can be removed from any other squares in that row or column.
 
 intersectionRemovalSimplifier :: Simplifier
-intersectionRemovalSimplifier s = logSolution $ findJust tryGroup rowsAndCols
+intersectionRemovalSimplifier s = findFirst tryGroup rowsAndCols
     where
       rowsAndCols = [Row r | r <- [1..9]] ++ [Col c | c <- [1..9]]
 
-      tryGroup g = findJust (tryValue g) (groupPossibleValues g)
+      tryGroup g = findFirst (tryValue g) (groupPossibleValues g)
 
-      tryValue       :: Group -> Value -> Maybe (Sudoku, P.Doc)
+      tryValue       :: Group -> Value -> LogWriter Sudoku
       tryValue g val =
           let blocks = intersectingBlocks g
-          in findJust (\(g1, g2) -> tryIntersection g1 g2 val)
+          in findFirst (\(g1, g2) -> tryIntersection g1 g2 val)
                  ([(g, b) | b <- blocks] ++ [(b, g) | b <- blocks])
 
       -- Return a list of all possible values in a group
@@ -231,16 +229,14 @@ intersectionRemovalSimplifier s = logSolution $ findJust tryGroup rowsAndCols
       -- If any square in group can contain val, and the only squares in group that can contain
       -- val are the squares which intersect with otherGroup, then remove val as a possible
       -- from any squares in otherGroup which don't intersect with group
-      tryIntersection                      :: Group -> Group -> Value -> Maybe (Sudoku, P.Doc)
+      tryIntersection                      :: Group -> Group -> Value -> LogWriter Sudoku
       tryIntersection group otherGroup val =
           let groupCoords = groupValSquares group val
               otherGroupCoords = groupValSquares otherGroup val
               coordsToRemove = otherGroupCoords \\ groupCoords
-          in if null groupCoords || not (null (groupCoords \\ otherGroupCoords)) || null coordsToRemove then
-                 Nothing
-             else
-                 Just (removePossibleValues s [(crd, [val]) | crd <- coordsToRemove],
-                       describe group otherGroup coordsToRemove val)
+          in do guard (not (null groupCoords || not (null (groupCoords \\ otherGroupCoords)) || null coordsToRemove)) 
+                addLog (describe group otherGroup coordsToRemove val)
+                return (removePossibleValues s [(crd, [val]) | crd <- coordsToRemove])
 
       describe group otherGroup otherSquares val =
           P.text "In" <+> doc group <> P.text "," <+> doc val
@@ -261,7 +257,7 @@ intersectionRemovalSimplifier s = logSolution $ findJust tryGroup rowsAndCols
 -- remove that value from other squares in those columns.
 
 simpleXWingSimplifier :: Simplifier
-simpleXWingSimplifier s = logSolution $ findJust tryPairOfGroups groupPairs
+simpleXWingSimplifier s = findFirst tryPairOfGroups groupPairs
     where
       groupPairs = ssolk 2 (map Row [1..9]) ++ ssolk 2 (map Col [1..9])
       tryPairOfGroups [g1, g2] =
@@ -271,16 +267,16 @@ simpleXWingSimplifier s = logSolution $ findJust tryPairOfGroups groupPairs
                                                v <- fromJust (possibleValues sq)]
               g2ValMap = IM.fromListWith (++) [(v, [c]) | (c, sq) <- g2Empties,
                                                v <- fromJust (possibleValues sq)]
-          in findJust (tryValue g2ValMap) (IM.toList g1ValMap)
+          in findFirst (tryValue g2ValMap) (IM.toList g1ValMap)
           where
             tryValue g2ValMap (val, g1Coords) =
-                do g2Coords <- IM.lookup val g2ValMap
+                do g2Coords <- lift (IM.lookup val g2ValMap)
                    guard (length g1Coords == 2 && length g2Coords == 2)
                    guard (coordsMatch g1 g1Coords g2Coords)
                    -- Found a XWing pattern.  Now see if there are any possibles to remove
-                   coordsToRemove <- findCoordsToRemove val g1 g2 g1Coords
-                   return (removePossibleValues s [(c, [val]) | c <- coordsToRemove],
-                           describe g1 g2 g1Coords g2Coords val coordsToRemove)
+                   coordsToRemove <- lift (findCoordsToRemove val g1 g2 g1Coords)
+                   addLog (describe g1 g2 g1Coords g2Coords val coordsToRemove)
+                   return (removePossibleValues s [(c, [val]) | c <- coordsToRemove])
 
       coordsMatch (Row _) g1Coords g2Coords = map snd g1Coords == map snd g2Coords
       coordsMatch (Col _) g1Coords g2Coords = map fst g1Coords == map fst g2Coords
@@ -388,7 +384,7 @@ solve :: Sudoku -> (Sudoku, P.Doc)
 solve s = let (solution, docs) = solve' (s, []) in (solution, vcat docs)
     where solve' sd =
             let applySimplifier f = runWriterT (writer sd >>= f) in
-            case findJust applySimplifier simplifiers of
+            case findFirst applySimplifier simplifiers of
               Just sd' -> solve' sd'
               Nothing -> sd
 
