@@ -17,7 +17,7 @@ import Control.Monad (foldM, when, unless, guard)
 import Control.Monad.Writer (WriterT, tell, runWriterT, lift, writer)
 import Data.List (find, tails, partition, (\\), group, sort, union, groupBy, sortBy, nub)
 import Data.Maybe (mapMaybe, listToMaybe, fromJust, isJust)
-import Control.Applicative (Alternative, (<|>), empty)
+import Control.Applicative (Alternative, (<|>), (<$>), empty)
 import Sudoku
 import System.Console.GetOpt
 import System.Environment (getArgs)
@@ -57,7 +57,7 @@ addLog doc = tell [doc]
 
 forcedMoveSimplifier :: Simplifier
 forcedMoveSimplifier s =
-    do (c, v) <- lift $ listToMaybe [(c,v) | (c, Empty [v]) <- emptySquares s]
+    do (c, v) <- lift (listToMaybe [(c,v) | (c, Empty [v]) <- emptySquares s])
        addLog (P.text "Forced move:" <+> doc c <+> P.text "=" <+> doc v)
        return (assignValue s (c,v))
 
@@ -381,12 +381,9 @@ isSolution s = all (isAssigned.snd) (allSquares s)
 -- description of the steps used to solve the puzzle.
 
 solve :: Sudoku -> (Sudoku, P.Doc)
-solve s = let (solution, docs) = solve' (s, []) in (solution, vcat docs)
-    where solve' sd =
-            let applySimplifier f = runWriterT (writer sd >>= f) in
-            case findFirst applySimplifier simplifiers of
-              Just sd' -> solve' sd'
-              Nothing -> sd
+solve s = let (s', docs) = fromJust (runWriterT (solve' s)) in (s', vcat docs)
+  where solve' s = (findFirst ($ s) simplifiers >>= solve') <|> return s
+
 
 difficultSample =
     "001000600" ++
@@ -468,8 +465,10 @@ doParFile file outputUnsolved = do
       (solved, unsolved) = partition (isSolution.fst) (zip solutions puzzleStrings)
       numSolved = length solved
       numPuzzles = length puzzles
-  when outputUnsolved $ mapM_ (putStrLn.snd) unsolved
-  unless outputUnsolved $ putStrLn ("Solved " ++ show numSolved ++ " puzzles out of " ++ show numPuzzles)
+  if outputUnsolved then
+    mapM_ (putStrLn.snd) unsolved
+  else
+    putStrLn ("Solved " ++ show numSolved ++ " puzzles out of " ++ show numPuzzles)
 
 doMain opts
     | Just file <- lookup "file" opts = doFile file
