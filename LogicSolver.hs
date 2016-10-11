@@ -13,15 +13,16 @@ module Main ( main
             , parseOpts
 ) where
 
-import Control.Monad (foldM, when, unless, guard)
-import Control.Monad.Writer (WriterT, tell, runWriterT, lift, writer)
-import Data.List (find, tails, partition, (\\), group, sort, union, groupBy, sortBy, nub)
+import Control.Applicative (Alternative, (<|>), empty)
+import Control.Monad (foldM, when, guard)
+import Control.Monad.Writer (WriterT, tell, runWriterT, lift)
+import Data.Foldable (asum)
+import Data.List (tails, partition, (\\), union, groupBy, sortBy)
 import Data.Maybe (mapMaybe, listToMaybe, fromJust, isJust)
-import Control.Applicative (Alternative, (<|>), (<$>), empty)
 import Sudoku
 import System.Console.GetOpt
 import System.Environment (getArgs)
-import Text.PrettyPrint (($$), (<>), (<+>), vcat)
+import Text.PrettyPrint ((<>), (<+>), vcat)
 import qualified Control.Parallel.Strategies as PS
 import qualified Data.IntMap as IM
 import qualified System.IO as SIO
@@ -32,10 +33,19 @@ doc :: Show a => a -> P.Doc
 doc = P.text . show
 
 
--- Finds the first element of a list for which the given function returns 
--- a non-empty value
+{- 
+  Finds the first element of a list for which the given function returns 
+  a non-empty value.
+
+  Note: What this function actually does fold a list of Alternatives with the <|>
+  operator.  So the behavior of this function actually depends on how <|>  is
+  implemented for the type being passed in.  For Maybe, <|> chooses the first
+  argument which isn't Nothing.  However for lists, <|> = ++, so if 'f' is [], 
+  then this function would just concatenate all the lists rather than return the 
+  first non-empty list.
+-}
 findFirst :: Alternative f => (a -> f b) -> [a] -> f b
-findFirst f = foldr ((<|>) . f) empty
+findFirst f xs = asum (map f xs)
 
 {-| A simplifier is a function which takes a Sudoku board, and tries
 to eliminate some of the possible values from the empty squares'
@@ -219,8 +229,9 @@ intersectionRemovalSimplifier s = findFirst tryGroup rowsAndCols
       groupPossibleValues g = foldl union [] [vs | (_, Empty vs) <- groupSquares s g]
 
       intersectingBlocks         :: Group -> [Group]
-      intersectingBlocks (Row r) = [blockOfCoord (r, 1), blockOfCoord (r, 4), blockOfCoord (r, 7)]
-      intersectingBlocks (Col c) = [blockOfCoord (1, c), blockOfCoord (4, c), blockOfCoord (7, c)]
+      intersectingBlocks (Row r)   = [blockOfCoord (r, 1), blockOfCoord (r, 4), blockOfCoord (r, 7)]
+      intersectingBlocks (Col c)   = [blockOfCoord (1, c), blockOfCoord (4, c), blockOfCoord (7, c)]
+      intersectingBlocks (Block _) = error "Oops"
 
       -- Return a list of the coordinates in group of squares which have val as a possible
       groupValSquares           :: Group -> Value -> [Coord]
@@ -277,9 +288,11 @@ simpleXWingSimplifier s = findFirst tryPairOfGroups groupPairs
                    coordsToRemove <- lift (findCoordsToRemove val g1 g2 g1Coords)
                    addLog (describe g1 g2 g1Coords g2Coords val coordsToRemove)
                    return (removePossibleValues s [(c, [val]) | c <- coordsToRemove])
+      tryPairOfGroups _ = error "Call with length 2 lists only"
 
       coordsMatch (Row _) g1Coords g2Coords = map snd g1Coords == map snd g2Coords
       coordsMatch (Col _) g1Coords g2Coords = map fst g1Coords == map fst g2Coords
+      coordsMatch (Block _) _ _             = error "Oops, called with block"
 
       findCoordsToRemove val (Row r1) (Row r2) [(_, c1), (_, c2)] =
           -- see if any squares in column c1 or c2, except at rows r1 or r2, contain val
@@ -303,6 +316,7 @@ simpleXWingSimplifier s = findFirst tryPairOfGroups groupPairs
                 do possibles <- possibleValues sq
                    guard (c /= c1 && c /= c2 && elem val possibles)
                    return (r,c)
+      findCoordsToRemove _ _ _ _ = error "Called with unexpected args"
 
       describe group1 group2 g1Coords g2Coords valToRemove coordsToRemove =
           P.text "Found X-Wing in" <+> doc group1 <+> P.text "and" <+> doc group2

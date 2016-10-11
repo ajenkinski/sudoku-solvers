@@ -68,7 +68,7 @@ executable LogicSolver
   -- Base language which the package is written in.
   default-language:    Haskell2010
 
-  ghc-options: -threaded
+  ghc-options: -threaded -W
   
 executable AlgoXSolver
   -- .hs or .lhs file containing the Main module.

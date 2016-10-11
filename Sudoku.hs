@@ -21,7 +21,6 @@ import qualified Data.Array as A
 import Data.Array ((//), (!))
 import qualified Data.Char as Char
 import Data.List ((\\), delete, intersperse)
-import qualified Control.Parallel.Strategies as PS
 import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
 
@@ -68,7 +67,7 @@ data Sudoku = Sudoku {board :: A.Array Coord Square,
               deriving (Generic,NFData)
 
 get :: Sudoku -> Coord -> Square
-get s c = (board s)!c
+get s c = board s ! c
 
 -- A datatype to specify groups of cells on a board.
 
@@ -82,15 +81,14 @@ initialSudoku es =
     let init = A.listArray ((1,1),(9,9)) (map valToSquare es)
     in addAnnotations $ mkSudokuFromArray init
     where
-      valToSquare v = if v == 0 then (Empty []) else (Assigned v)
+      valToSquare v = if v == 0 then Empty [] else Assigned v
 
       -- Find all valid assignments for a single element
       findValidValues :: Sudoku -> Coord -> [Value]
       findValidValues s c =
-          case (board s)!c of
+          case board s ! c of
             Assigned _ -> error "Can't find possible values for assigned square"
-            otherwise ->
-                [1..9] \\ [v | (_, Assigned v) <- connectedSquares s c]
+            _ -> [1..9] \\ [v | (_, Assigned v) <- connectedSquares s c]
 
       -- Annotate all unassigned elements with possible values
       addAnnotations :: Sudoku -> Sudoku
@@ -114,7 +112,7 @@ instance Show Sudoku where
 -- assigned values, but also shows the possibleValues lists associated
 -- with unassigned cells.
 verboseShow :: Sudoku -> String
-verboseShow sud = foldl1 (.) (map showRow [1..9]) $ rowSeparator
+verboseShow sud = foldl1 (.) (map showRow [1..9]) rowSeparator
     where rowSeparator = concat (replicate 9 "+-------") ++ "+\n"
           showRow r =
               let row = map snd (groupSquares sud (Row r))
@@ -126,10 +124,10 @@ verboseShow sud = foldl1 (.) (map showRow [1..9]) $ rowSeparator
               if rnum == 1 then showString ("   " ++ show v ++ "   |")
               else showString "       |"
           showSquare rnum (Empty vs) =
-              let char n = if elem n vs then Char.intToDigit n else '.'
+              let char n = if n `elem` vs then Char.intToDigit n else '.'
                   start = rnum * 3 + 1
                   vals = map char [start..start+2]
-              in showString (" " ++ (intersperse ' ' vals) ++ " |")
+              in showString (" " ++ intersperse ' ' vals ++ " |")
 
 
 -- Parse a Sudoko board from a string.  The format of the string is:
@@ -142,9 +140,9 @@ parseSudoku str = initialSudoku (map readValue str)
 -- Functions on Groups
 
 groupSquares                   :: Sudoku -> Group -> [Element]
-groupSquares sud (Row r)       = (rows sud)!r
-groupSquares sud (Col c)       = (cols sud)!c
-groupSquares sud (Block coord) = (blocks sud)!(blockNum coord)
+groupSquares sud (Row r)       = rows sud ! r
+groupSquares sud (Col c)       = cols sud ! c
+groupSquares sud (Block coord) = blocks sud ! blockNum coord
 
 allGroups :: [Group]
 allGroups = [Row r | r <- [1..9]] ++
@@ -159,23 +157,21 @@ allGroupSquares s = map (groupSquares s) allGroups
 
 connectedSquares :: Sudoku -> Coord -> [Element]
 connectedSquares s coord@(r,c) =
-    (deleteFirstBy ((coord==).fst) (groupSquares s (Row r))) ++
-    (deleteFirstBy ((coord==).fst) (groupSquares s (Col c))) ++
-    (filter (\((r',c'),_) -> r /= r' && c /= c')
-            (groupSquares s (Block coord)))
+    deleteFirstBy ((coord==).fst) (groupSquares s (Row r)) ++
+    deleteFirstBy ((coord==).fst) (groupSquares s (Col c)) ++
+    filter (\((r',c'),_) -> r /= r' && c /= c') (groupSquares s (Block coord))
 
 emptySquares :: Sudoku -> [Element]
-emptySquares (Sudoku {board=b}) = filter (isEmpty.snd) (A.assocs b)
+emptySquares Sudoku {board=b} = filter (isEmpty.snd) (A.assocs b)
 
 allSquares :: Sudoku -> [Element]
 allSquares = A.assocs . board
 
 assignValue :: Sudoku -> (Coord, Value) -> Sudoku
-assignValue s@(Sudoku {board=b}) (c, v) =
+assignValue s@Sudoku {board=b} (c, v) =
     case b!c of
       Assigned _ -> error "Can't assign to assigned square"
-      otherwise ->
-          let newCells =
+      _ -> let newCells =
                   (c,Assigned v) : [(c', Empty (delete v vs)) |
                                     (c', Empty vs) <- connectedSquares s c]
           in mkSudokuFromArray $ b // newCells
@@ -206,7 +202,7 @@ readValue = Char.digitToInt
 -- Delete the first element in a list for which a predicate returns true.
 deleteFirstBy          :: (a -> Bool) -> [a] -> [a]
 deleteFirstBy _ []     = []
-deleteFirstBy f (x:xs) = if f x then xs else x:(deleteFirstBy f xs)
+deleteFirstBy f (x:xs) = if f x then xs else x:deleteFirstBy f xs
 
 blockNum :: Coord -> Int
 blockNum (r,c) =
@@ -230,7 +226,7 @@ blockCoords = (a!)
                     cs <- [[1,2,3],[4,5,6],[7,8,9]]]
 
 mkSudoku :: [Element] -> Sudoku
-mkSudoku = mkSudokuFromArray . (A.array ((1,1), (9,9)))
+mkSudoku = mkSudokuFromArray . A.array ((1,1), (9,9))
 
 mkSudokuFromArray :: A.Array Coord Square -> Sudoku
 mkSudokuFromArray ar =
