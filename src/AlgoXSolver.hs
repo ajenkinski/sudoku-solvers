@@ -1,3 +1,5 @@
+module Main where
+
 {-
 A Sudoku solver which uses Knuth's Algorithm X to solve a sudoku
 puzzle.  Sudoku is an example of an "exact cover" problem, or more
@@ -144,8 +146,8 @@ algoX sp = algoX' sp []
           trim row sp =
               -- remove columns set in row, and any other rows which
               -- have a column which is set in row
-              let sp' = foldl (\s c -> delCol c s) sp row
-              in foldl (\s r -> delRow r s) sp' (concat (map (`getCol` sp) row))
+              let sp' = foldl (flip delCol) sp row
+              in foldl (flip delRow) sp' (concatMap (`getCol` sp) row)
 
 
 {-
@@ -263,19 +265,13 @@ rowToPossibility :: Int -> Possibility
 rowToPossibility = (possibilities !)
     where 
       range = ((1,1,1),(9,9,9))
-      possibilities = listArray (0, (Ix.rangeSize range) - 1) (Ix.range range)
+      possibilities = listArray (0, Ix.rangeSize range - 1) (Ix.range range)
 
 -- Convert a constraint, such as R1C1, to a column number, starting at 0
 -- for (1,1).
 
 constraintToCol :: Constraint -> Int
 constraintToCol = Ix.index ((1,1),(9,9))
-
-
--- The inverse of constraintToCol
-
-colToConstraint :: Int -> Constraint
-colToConstraint c = (c `div` 9 + 1, c `mod` 9 + 1)
 
 {-
 The solve function takes as input a string representation of a sudoku
@@ -347,9 +343,8 @@ parseOpts args =
 
 doPuzzle :: String -> IO ()
 doPuzzle puzzle
-    | (solution:_) <- solve puzzle
-    = putStrLn $ show (Sudoku.mkSudoku [((r,c), Sudoku.Assigned n) |
-                                        (r,c,n) <- solution])
+    | (solution:_) <- solve puzzle =
+      print (Sudoku.mkSudoku [((r,c), Sudoku.Assigned n) | (r,c,n) <- solution])
     | otherwise = putStrLn "Couldn't solve it"
 
 {-
@@ -386,7 +381,7 @@ doParFile :: FilePath -> IO ()
 doParFile file = do
   contents <- readFile file
   let puzzles = words contents
-      solutions = (map ((take 1) . solve) puzzles) `PS.using` strategy 
+      solutions = map (take 1 . solve) puzzles `PS.using` strategy 
       numSolved = sum (map length solutions)
       numPuzzles = length puzzles
   putStrLn ("Solved " ++ show numSolved ++ " puzzles out of " ++ show numPuzzles)
