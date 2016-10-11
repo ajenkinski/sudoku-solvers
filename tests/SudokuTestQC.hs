@@ -24,7 +24,13 @@ import qualified Data.Ix as Ix
 import qualified Data.Maybe as M
 
 type Board = A.Array S.Coord S.Square
-data TestCase = TC String Board S.Sudoku
+
+data TestCase = TC { 
+  boardStr      :: String,
+  expectedBoard :: Board,
+  actualBoard   :: S.Sudoku
+}
+
 type Move = (S.Coord, S.Value)
 
 instance Show TestCase where
@@ -109,7 +115,7 @@ prop_testConnectedSquares (TC s b sb) = all connectedEqual allCoords
               in expected == actual
 
 prop_testGetSquare (TC s b sb) = all squareEqual (A.assocs b)
-    where squareEqual (crd, sq) = sq == (S.get sb crd)
+    where squareEqual (crd, sq) = sq == S.get sb crd
 
 prop_testAssignValue (TC s b sb) =
     forAll (genMove b) $ \(crd, val) ->
@@ -118,7 +124,7 @@ prop_testAssignValue (TC s b sb) =
                        (crd', S.Empty vals) <- [(c, b!c) | c <- peerCoords crd]]
             expected = b // changes
             actual = S.assignValue sb (crd, val)
-        in (A.assocs expected) == (S.allSquares actual)
+        in A.assocs expected == S.allSquares actual
 
 
 testOpts = Args { replay = Nothing,

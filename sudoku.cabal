@@ -63,7 +63,7 @@ executable LogicSolver
   build-depends:       base, containers, parallel, array, pretty, deepseq, mtl
   
   -- Directories containing source files.
-  -- hs-source-dirs:      
+  hs-source-dirs: src
   
   -- Base language which the package is written in.
   default-language:    Haskell2010
@@ -84,7 +84,7 @@ executable AlgoXSolver
   build-depends:       base, containers, parallel, array, pretty, deepseq
   
   -- Directories containing source files.
-  -- hs-source-dirs:      
+  hs-source-dirs: src
   
   -- Base language which the package is written in.
   default-language:    Haskell2010
@@ -95,5 +95,6 @@ Test-Suite test-sudoku
   type: exitcode-stdio-1.0
   main-is: SudokuTestQC.hs
   other-modules: Sudoku, TestData
+  hs-source-dirs: src, tests
   build-depends: base, containers, parallel, array, pretty, deepseq, QuickCheck
 
