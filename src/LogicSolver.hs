@@ -19,6 +19,7 @@ import Control.Monad.Writer (runWriterT, lift)
 import Data.List (partition, (\\), union, groupBy, sortBy)
 import Data.Maybe (mapMaybe, listToMaybe, fromJust, isJust)
 import LogicSolver.SimpleColoring
+import LogicSolver.YWing
 import LogicSolver.Utils
 import Sudoku
 import System.Console.GetOpt
@@ -335,6 +336,7 @@ simplifiers = [ forcedMoveSimplifier
               , hiddenSetSimplifier
               , intersectionRemovalSimplifier
               , simpleXWingSimplifier
+              , yWingSimplifier
               , simpleColoringSimplifier
               ]
 

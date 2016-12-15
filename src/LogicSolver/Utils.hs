@@ -15,7 +15,7 @@ doc = P.text . show
   Finds the first element of a list for which the given function returns 
   a non-empty value.
 
-  Note: What this function actually does fold a list of Alternatives with the <|>
+  Note: What this function actually does is fold a list of Alternatives with the <|>
   operator.  So the behavior of this function actually depends on how <|>  is
   implemented for the type being passed in.  For Maybe, <|> chooses the first
   argument which isn't Nothing.  However for lists, <|> = ++, so if 'f' is [], 
