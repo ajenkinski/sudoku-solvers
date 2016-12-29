@@ -6,7 +6,6 @@ module Main ( main
             , hiddenSetSimplifier
             , nakedSetSimplifier
             , intersectionRemovalSimplifier
-            , simpleXWingSimplifier
             , blockOfCoord
             , isInGroup
             , solve
@@ -17,7 +16,8 @@ import Control.Applicative ((<|>), empty)
 import Control.Monad (foldM, when, guard)
 import Control.Monad.Writer (runWriterT, lift)
 import Data.List (partition, (\\), union, groupBy, sortBy)
-import Data.Maybe (mapMaybe, listToMaybe, fromJust, isJust)
+import Data.Maybe (listToMaybe, fromJust, isJust)
+import LogicSolver.BasicFish
 import LogicSolver.SimpleColoring
 import LogicSolver.YWing
 import LogicSolver.Utils
@@ -26,7 +26,6 @@ import System.Console.GetOpt
 import System.Environment (getArgs)
 import Text.PrettyPrint ((<>), (<+>), vcat)
 import qualified Control.Parallel.Strategies as PS
-import qualified Data.IntMap as IM
 import qualified System.IO as SIO
 import qualified Text.PrettyPrint as P
 
@@ -217,75 +216,6 @@ intersectionRemovalSimplifier s = findFirst tryGroup rowsAndCols
             <+> P.text "Deleting" <+> doc val <+> P.text "from"
             <+> doc otherSquares
 
--- | Simple X-Wing: To find a simple X-Wing, look for a row in the
--- puzzle that has only two squares that can contain a particular
--- number (also known as a “conjugate pair”), then find another row
--- that has only two squares that can contain that number. If the
--- squares line up into the same two columns, forming a box shape,
--- then you’ve found an X-Wing, and the number can be removed from all
--- the other squares in the two columns.  The same can be applied to
--- columns as well.  Also, this can be generalized to more than two.
--- For instance if you can find three rows that each contain a
--- particular value in only the same three columns, then you can
--- remove that value from other squares in those columns.
-
-simpleXWingSimplifier :: Simplifier
-simpleXWingSimplifier s = findFirst tryPairOfGroups groupPairs
-    where
-      groupPairs = ssolk 2 (map Row [1..9]) ++ ssolk 2 (map Col [1..9])
-      tryPairOfGroups [g1, g2] =
-          let g1Empties = filter (isEmpty.snd) (groupSquares s g1)
-              g2Empties = filter (isEmpty.snd) (groupSquares s g2)
-              g1ValMap = IM.fromListWith (++) [(v, [c]) | (c, sq) <- g1Empties,
-                                               v <- fromJust (possibleValues sq)]
-              g2ValMap = IM.fromListWith (++) [(v, [c]) | (c, sq) <- g2Empties,
-                                               v <- fromJust (possibleValues sq)]
-          in findFirst (tryValue g2ValMap) (IM.toList g1ValMap)
-          where
-            tryValue g2ValMap (val, g1Coords) =
-                do g2Coords <- lift (IM.lookup val g2ValMap)
-                   guard (length g1Coords == 2 && length g2Coords == 2)
-                   guard (coordsMatch g1 g1Coords g2Coords)
-                   -- Found a XWing pattern.  Now see if there are any possibles to remove
-                   coordsToRemove <- lift (findCoordsToRemove val g1 g2 g1Coords)
-                   addLog (describe g1 g2 g1Coords g2Coords val coordsToRemove)
-                   return (removePossibleValues s [(c, [val]) | c <- coordsToRemove])
-      tryPairOfGroups _ = error "Call with length 2 lists only"
-
-      coordsMatch (Row _) g1Coords g2Coords = map snd g1Coords == map snd g2Coords
-      coordsMatch (Col _) g1Coords g2Coords = map fst g1Coords == map fst g2Coords
-      coordsMatch (Block _) _ _             = error "Oops, called with block"
-
-      findCoordsToRemove val (Row r1) (Row r2) [(_, c1), (_, c2)] =
-          -- see if any squares in column c1 or c2, except at rows r1 or r2, contain val
-          let squares = groupSquares s (Col c1) ++ groupSquares s (Col c2)
-          in case mapMaybe getCoordIfContainsVal squares of
-               [] -> Nothing
-               coords -> Just coords
-          where
-            getCoordIfContainsVal ((r,c), sq) =
-                do possibles <- possibleValues sq
-                   guard (r /= r1 && r /= r2 && elem val possibles)
-                   return (r,c)
-      findCoordsToRemove val (Col c1) (Col c2) [(r1, _), (r2, _)] =
-          -- see if any squares in row r1 or r2, except at columns c1 or c2, contain val
-          let squares = groupSquares s (Row r1) ++ groupSquares s (Row r2)
-          in case mapMaybe getCoordIfContainsVal squares of
-               [] -> Nothing
-               coords -> Just coords
-          where
-            getCoordIfContainsVal ((r,c), sq) =
-                do possibles <- possibleValues sq
-                   guard (c /= c1 && c /= c2 && elem val possibles)
-                   return (r,c)
-      findCoordsToRemove _ _ _ _ = error "Called with unexpected args"
-
-      describe group1 group2 g1Coords g2Coords valToRemove coordsToRemove =
-          P.text "Found X-Wing in" <+> doc group1 <+> P.text "and" <+> doc group2
-            <+> P.text ", in" <+> doc g1Coords <+> P.text "and" <+> doc g2Coords <> P.text "."
-            <+> P.text "Deleting" <+> doc valToRemove <+> P.text "from" <+> doc coordsToRemove
-
-
 -- | Unique Rectangles: This one is hard enough to explain that I'll
 -- just refer to the Suduku Susser.pdf document in this directory,
 -- starting on page 49.  Basically, this takes advantage of the fact
@@ -337,7 +267,9 @@ simplifiers = [ forcedMoveSimplifier
               , intersectionRemovalSimplifier
               , simpleXWingSimplifier
               , yWingSimplifier
+              , simpleSwordfishSimplifier
               , simpleColoringSimplifier
+              , simpleJellyfishSimplifier
               ]
 
 isSolution :: Sudoku -> Bool
