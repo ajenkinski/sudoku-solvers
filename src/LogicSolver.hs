@@ -211,7 +211,7 @@ intersectionRemovalSimplifier s = findFirst tryGroup rowsAndCols
                 return (removePossibleValues s [(crd, [val]) | crd <- coordsToRemove])
 
       describe group otherGroup otherSquares val =
-          P.text "In" <+> doc group <> P.text "," <+> doc val
+          P.text "Intersection Removal: In" <+> doc group <> P.text "," <+> doc val
             <+> P.text "can only be in" <+> doc otherGroup <> P.text "."
             <+> P.text "Deleting" <+> doc val <+> P.text "from"
             <+> doc otherSquares
@@ -270,6 +270,7 @@ simplifiers = [ forcedMoveSimplifier
               , simpleSwordfishSimplifier
               , simpleColoringSimplifier
               , simpleJellyfishSimplifier
+              , simpleSquirmbagSimplifier
               ]
 
 isSolution :: Sudoku -> Bool

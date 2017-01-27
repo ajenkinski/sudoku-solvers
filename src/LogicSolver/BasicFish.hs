@@ -2,6 +2,7 @@ module LogicSolver.BasicFish (
                               simpleXWingSimplifier
                               , simpleSwordfishSimplifier
                               , simpleJellyfishSimplifier
+                              , simpleSquirmbagSimplifier
 ) where
 
 {- Implement basic fish strategies, as described here:
@@ -17,7 +18,7 @@ import Control.Monad (guard)
 import Data.Maybe (mapMaybe)
 import LogicSolver.Utils
 import Sudoku
-import Text.PrettyPrint ((<+>))
+import Text.PrettyPrint ((<>), (<+>))
 import qualified Data.IntMap as IM
 import qualified Data.List as List
 import qualified Text.PrettyPrint as P
@@ -26,6 +27,7 @@ import qualified Text.PrettyPrint as P
 simpleXWingSimplifier     = simpleFishSimplifier "X-Wing" 2
 simpleSwordfishSimplifier = simpleFishSimplifier "Swordfish" 3
 simpleJellyfishSimplifier = simpleFishSimplifier "Jellyfish" 4
+simpleSquirmbagSimplifier = simpleFishSimplifier "Squirmbag" 5
 
 simpleFishSimplifier :: String -> Int -> Simplifier
 simpleFishSimplifier ruleName n sudoku =
@@ -61,7 +63,7 @@ solveForGroupType groupType otherGroupType otherComponent ruleName n sudoku =
           guard (not (null coordsToRemove))
 
           addLog (P.text "Found" <+> P.text ruleName <+> P.text "in" <+> doc (map fst set)
-                  <+> P.text ", in" <+> doc coords <+> P.text "." <+> P.text "Deleting" <+> doc val
+                  <+> P.text ", in" <+> doc coords <> P.text "." <+> P.text "Deleting" <+> doc val
                   <+> P.text "from" <+> doc coordsToRemove)
           return (removePossibleValues sudoku [(c, [val]) | c <- coordsToRemove])
 
