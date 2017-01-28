@@ -48,7 +48,7 @@ executable LogicSolver
   --  other-extensions:
   
   -- Other library packages from which modules are imported.
-  build-depends:       sudoku, base, containers, parallel, array, pretty, deepseq, mtl
+  build-depends:       sudoku, base, containers, parallel, array, pretty, deepseq, mtl, fgl
   
   -- Directories containing source files.
   hs-source-dirs: src

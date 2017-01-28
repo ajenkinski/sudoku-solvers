@@ -45,5 +45,3 @@ ssolk k xs
     | k == 0    = [[]]
     | otherwise =
         [x:ss | (x:rest) <- tails xs, ss <- ssolk (k-1) rest]
-
-

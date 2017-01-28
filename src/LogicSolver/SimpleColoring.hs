@@ -11,10 +11,11 @@ import Data.Maybe (mapMaybe, listToMaybe)
 import LogicSolver.Utils
 import Sudoku
 import Text.PrettyPrint ((<+>))
-import qualified Data.Graph as G
-import qualified Data.Tree as T
 import qualified Text.PrettyPrint as P
-
+import qualified Data.Graph.Inductive.Graph as GR
+import qualified Data.Graph.Inductive.PatriciaTree as PT
+import qualified Data.Graph.Inductive.Query.BFS as BFS
+import qualified Data.Graph.Inductive.Query.DFS as DFS
 
 simpleColoringSimplifier :: Simplifier
 simpleColoringSimplifier sudoku = findFirst tryChain (findChains sudoku)
@@ -38,7 +39,9 @@ simpleColoringSimplifier sudoku = findFirst tryChain (findChains sudoku)
 
 data Color = Black | White deriving (Eq, Show)
 
-data Chain = Chain Value [(Coord, Color)] deriving (Show)
+data Chain = Chain { chainValue :: Value,
+                     chainAssignments :: [(Coord, Color)]
+                   } deriving (Show)
 
 type Groups = [[Element]]
 
@@ -81,23 +84,40 @@ findLinks groups value = mapMaybe findLink groups
             [coord1, coord2] -> Just (coord1, coord2)
             _                -> Nothing
 
-coordToVertex :: Coord -> G.Vertex
+coordToVertex :: Coord -> GR.Node
 coordToVertex (row, col) = (row - 1) * 9 + (col - 1)
 
-vertexToCoord :: G.Vertex -> Coord
+vertexToCoord :: GR.Node -> Coord
 vertexToCoord vertex = ((vertex `div` 9) + 1, (vertex `mod` 9) + 1)
 
 chainsForValue :: Groups -> Value -> [Chain]
 chainsForValue groups value =
   let links = findLinks groups value
       edges = [(coordToVertex c1, coordToVertex c2) | (c1, c2) <- links]
-      graph = G.buildG (0, 80) edges
-      -- Connected components consisting of more than one node correspond to chains
-      comps = [comp | comp <- G.components graph, (not . null . T.subForest) comp]
+      nodes = concat [[a, b] | (a, b) <- edges]
+      graph = GR.mkUGraph nodes edges :: PT.Gr () ()
+      -- Connected components correspond to chains
+      comps = DFS.components graph
       compToChain comp =
         -- Assign alternating color to each level
-        let levelAssignments = zip (T.levels comp) (concat (repeat [Black, White]))
-        in Chain value [(vertexToCoord v, color) | (vals, color) <- levelAssignments, v <- vals] 
+        let levels = BFS.level (head comp) graph
+            colors = [Black, White]
+            levelAssignments = [(vertexToCoord v, colors !! (level `mod` 2)) | (v, level) <- levels]
+        in Chain value levelAssignments
    in [compToChain comp | comp <- comps]
 
+multiColoringForValue :: Groups -> Value -> Simplifier
+multiColoringForValue groups value sudoku =
+  let chains = chainsForValue groups value
+      coord2Chain :: Coord -> Maybe Chain
+      coord2Chain coord = find (\(Chain _ assigns) ->
+                                  (any (\(coord', _) -> coord == coord') assigns)) chains
+  in lift $ listToMaybe $ do
+    [chain1, chain2] <- ssolk 2 chains
+    (chain1Coord, _) <- chainAssignments chain1
+    (chain2Coord, _) <- chainAssignments chain2
+    guard (arePeers chain1Coord chain2Coord)
 
+    -- Now we know chain1Coord and chain2Coord are weakly connected
+    
+    

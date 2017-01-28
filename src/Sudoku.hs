@@ -12,7 +12,7 @@ module Sudoku (
               , get
               , parseSudoku, mkSudoku
               , groupSquares, allGroups, allGroupSquares
-              , connectedSquares
+              , connectedSquares, arePeers
               , emptySquares, allSquares
               , assignValue, removePossibleValues
 ) where
@@ -151,6 +151,10 @@ allGroups = [Row r | r <- [1..9]] ++
 
 allGroupSquares :: Sudoku -> [[Element]]
 allGroupSquares s = map (groupSquares s) allGroups
+
+arePeers :: Coord -> Coord -> Bool
+arePeers coord1@(row1, col1) coord2@(row2, col2) =
+  (row1 == row2) || (col1 == col2) || (blockNum coord1 == blockNum coord2)
 
 -- Get all elements in a row, column, block, connected to coord, minus
 -- the input coordinate.
