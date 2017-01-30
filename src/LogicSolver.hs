@@ -179,7 +179,7 @@ intersectionRemovalSimplifier s = findFirst tryGroup rowsAndCols
 
       tryGroup g = findFirst (tryValue g) (groupPossibleValues g)
 
-      tryValue       :: Group -> Value -> LogWriter Sudoku
+      tryValue       :: Group -> Value -> SimplifiedSudoku
       tryValue g val =
           let blocks = intersectingBlocks g
           in findFirst (\(g1, g2) -> tryIntersection g1 g2 val)
@@ -201,7 +201,7 @@ intersectionRemovalSimplifier s = findFirst tryGroup rowsAndCols
       -- If any square in group can contain val, and the only squares in group that can contain
       -- val are the squares which intersect with otherGroup, then remove val as a possible
       -- from any squares in otherGroup which don't intersect with group
-      tryIntersection                      :: Group -> Group -> Value -> LogWriter Sudoku
+      tryIntersection                      :: Group -> Group -> Value -> SimplifiedSudoku
       tryIntersection group otherGroup val =
           let groupCoords = groupValSquares group val
               otherGroupCoords = groupValSquares otherGroup val
@@ -271,6 +271,7 @@ simplifiers = [ forcedMoveSimplifier
               , simpleColoringSimplifier
               , simpleJellyfishSimplifier
               , simpleSquirmbagSimplifier
+              , multiColoringSimplifier
               ]
 
 isSolution :: Sudoku -> Bool

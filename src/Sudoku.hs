@@ -5,14 +5,14 @@ module Sudoku (
               , Square(..), Group(..)
               , verboseShow
               , isEmpty, isAssigned
-              , possibleValues, assignedValue
+              , possibleValues, assignedValue, hasCandidate
               , Coord
               , Element
               , Sudoku
               , get
               , parseSudoku, mkSudoku
               , groupSquares, allGroups, allGroupSquares
-              , connectedSquares, arePeers
+              , connectedSquares, arePeers, peersOfCoords
               , emptySquares, allSquares
               , assignValue, removePossibleValues
 ) where
@@ -20,7 +20,7 @@ module Sudoku (
 import qualified Data.Array as A
 import Data.Array ((//), (!))
 import qualified Data.Char as Char
-import Data.List ((\\), delete, intersperse)
+import Data.List ((\\), delete, intersperse, intersectBy)
 import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
 
@@ -49,6 +49,11 @@ possibleValues (Assigned _) = Nothing
 assignedValue              :: Square -> Maybe Value
 assignedValue (Assigned v) = Just v
 assignedValue (Empty _)    = Nothing
+
+
+hasCandidate                  :: Square -> Value -> Bool
+hasCandidate (Empty vs) value = value `elem` vs
+hasCandidate (Assigned _) _   = False
 
 type Coord = (Int, Int)
 type Element = (Coord, Square)
@@ -164,6 +169,12 @@ connectedSquares s coord@(r,c) =
     deleteFirstBy ((coord==).fst) (groupSquares s (Row r)) ++
     deleteFirstBy ((coord==).fst) (groupSquares s (Col c)) ++
     filter (\((r',c'),_) -> r /= r' && c /= c') (groupSquares s (Block coord))
+
+peersOfCoords :: Sudoku -> Coord -> Coord -> [Element]
+peersOfCoords sudoku coord1 coord2 =
+  let peersOf1 = connectedSquares sudoku coord1
+      peersOf2 = connectedSquares sudoku coord2
+  in intersectBy (\a b -> (fst a) == (fst b)) peersOf1 peersOf2
 
 emptySquares :: Sudoku -> [Element]
 emptySquares Sudoku {board=b} = filter (isEmpty.snd) (A.assocs b)

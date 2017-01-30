@@ -23,7 +23,7 @@ yWingSimplifier sudoku = findFirst tryWingPair yWings
         yWings = [(pivot, wingPair) | pivot <- potentialPivots, wingPair <- findWingPairs sudoku pivot]
 
         -- Given a y-wing, check if it results in a simplification
-        tryWingPair :: (Element, (Coord, Coord, Value)) -> LogWriter Sudoku
+        tryWingPair :: (Element, (Coord, Coord, Value)) -> SimplifiedSudoku
         tryWingPair ((pCoord, _), (coord1, coord2, valToRemove)) = do
           let intersection = connectedSquares sudoku coord1 `intersect` connectedSquares sudoku coord2
               candidates = [coord | (coord, Empty vs) <- intersection, valToRemove `elem` vs]

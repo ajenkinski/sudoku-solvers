@@ -34,7 +34,8 @@ simplifications done to the board so far, and return a new doc with a
 description of any new simplifications appended.  -}
 
 type LogWriter a = WriterT [P.Doc] Maybe a
-type Simplifier = Sudoku -> LogWriter Sudoku
+type SimplifiedSudoku = LogWriter Sudoku
+type Simplifier = Sudoku -> SimplifiedSudoku
 
 addLog :: P.Doc -> LogWriter ()
 addLog doc = tell [doc]
