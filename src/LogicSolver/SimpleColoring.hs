@@ -7,18 +7,18 @@ where
 - http://www.sudokuwiki.org/Singles_Chains
 -}
 
-import Control.Applicative ((<|>))
-import Control.Monad (guard)
-import Data.List (intersect, nub, find)
-import Data.Maybe (mapMaybe, listToMaybe, fromJust)
-import LogicSolver.Utils
-import Sudoku
-import Text.PrettyPrint ((<+>))
-import qualified Text.PrettyPrint as P
+import           Control.Applicative ((<|>))
+import           Control.Monad (guard)
 import qualified Data.Graph.Inductive.Graph as GR
 import qualified Data.Graph.Inductive.PatriciaTree as PT
 import qualified Data.Graph.Inductive.Query.BFS as BFS
 import qualified Data.Graph.Inductive.Query.DFS as DFS
+import           Data.List (intersect, nub, find)
+import           Data.Maybe (mapMaybe, listToMaybe, fromJust)
+import           LogicSolver.Utils
+import           Sudoku
+import           Text.PrettyPrint ((<+>))
+import qualified Text.PrettyPrint as P
 
 simpleColoringSimplifier :: Simplifier
 simpleColoringSimplifier sudoku = findFirst tryChain (findChains sudoku)

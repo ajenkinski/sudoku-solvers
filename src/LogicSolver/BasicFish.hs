@@ -13,14 +13,14 @@ module LogicSolver.BasicFish (
 - squares in those n columns.  The same applies to rows.
 -}
 
-import Control.Applicative ((<|>))
-import Control.Monad (guard)
-import Data.Maybe (mapMaybe)
-import LogicSolver.Utils
-import Sudoku
-import Text.PrettyPrint ((<>), (<+>))
+import           Control.Applicative ((<|>))
+import           Control.Monad (guard)
 import qualified Data.IntMap as IM
 import qualified Data.List as List
+import           Data.Maybe (mapMaybe)
+import           LogicSolver.Utils
+import           Sudoku
+import           Text.PrettyPrint ((<>), (<+>))
 import qualified Text.PrettyPrint as P
 
 

@@ -4,11 +4,11 @@ module LogicSolver.YWing (yWingSimplifier) where
 - http://www.sudokuwiki.org/Y_Wing_Strategy
 -}
 
-import Control.Monad (guard)
-import Data.List (intersect)
-import LogicSolver.Utils
-import Sudoku
-import Text.PrettyPrint ((<+>))
+import           Control.Monad (guard)
+import           Data.List (intersect)
+import           LogicSolver.Utils
+import           Sudoku
+import           Text.PrettyPrint ((<+>))
 import qualified Text.PrettyPrint as P
 
 

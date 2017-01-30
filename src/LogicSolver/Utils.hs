@@ -1,10 +1,10 @@
 module LogicSolver.Utils where
 
-import Control.Applicative (Alternative)
-import Control.Monad.Writer (WriterT, tell)
-import Data.Foldable (asum)
-import Data.List (tails)
-import Sudoku
+import           Control.Applicative (Alternative)
+import           Control.Monad.Writer (WriterT, tell)
+import           Data.Foldable (asum)
+import           Data.List (tails)
+import           Sudoku
 import qualified Text.PrettyPrint as P
 
 -- convert any showable object to a P.Doc

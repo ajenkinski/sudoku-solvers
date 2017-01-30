@@ -14,16 +14,16 @@ has more zeros than 1s, I'll represent it as a sparse matrix.  So the
 first order of business is to define a sparse matrix datatype.
 -}
 
-import qualified Data.Map as M
-import Data.List (minimumBy)
-import qualified Data.Ix as Ix
-import qualified Data.Char as Char
-import System.Console.GetOpt
-import System.Environment (getArgs)
-import Control.Monad (foldM, when)
-import qualified System.IO as SIO
+import           Control.Monad (foldM, when)
 import qualified Control.Parallel.Strategies as PS
-import Data.Array (listArray, (!))
+import           Data.Array (listArray, (!))
+import qualified Data.Char as Char
+import qualified Data.Ix as Ix
+import           Data.List (minimumBy)
+import qualified Data.Map as M
+import           System.Console.GetOpt
+import           System.Environment (getArgs)
+import qualified System.IO as SIO
 
 {-
 This program doesn't actually use the Sudoku module, except to

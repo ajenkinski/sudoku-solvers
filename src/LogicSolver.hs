@@ -12,21 +12,21 @@ module Main ( main
             , parseOpts
 ) where
 
-import Control.Applicative ((<|>), empty)
-import Control.Monad (foldM, when, guard)
-import Control.Monad.Writer (runWriterT, lift)
-import Data.List (partition, (\\), union, groupBy, sortBy)
-import Data.Maybe (listToMaybe, fromJust, isJust)
-import LogicSolver.BasicFish
-import LogicSolver.SimpleColoring
-import LogicSolver.YWing
-import LogicSolver.Utils
-import Sudoku
-import System.Console.GetOpt
-import System.Environment (getArgs)
-import Text.PrettyPrint ((<>), (<+>), vcat)
+import           Control.Applicative ((<|>), empty)
+import           Control.Monad (foldM, when, guard)
+import           Control.Monad.Writer (runWriterT, lift)
 import qualified Control.Parallel.Strategies as PS
+import           Data.List (partition, (\\), union, groupBy, sortBy)
+import           Data.Maybe (listToMaybe, fromJust, isJust)
+import           LogicSolver.BasicFish
+import           LogicSolver.SimpleColoring
+import           LogicSolver.Utils
+import           LogicSolver.YWing
+import           Sudoku
+import           System.Console.GetOpt
+import           System.Environment (getArgs)
 import qualified System.IO as SIO
+import           Text.PrettyPrint ((<>), (<+>), vcat)
 import qualified Text.PrettyPrint as P
 
 -- | A forced move is an unassigned cell with only one value in its

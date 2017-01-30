@@ -17,12 +17,12 @@ module Sudoku (
               , assignValue, removePossibleValues
 ) where
 
+import           Control.DeepSeq (NFData)
+import           Data.Array ((//), (!))
 import qualified Data.Array as A
-import Data.Array ((//), (!))
 import qualified Data.Char as Char
-import Data.List ((\\), delete, intersperse, intersectBy)
-import GHC.Generics (Generic)
-import Control.DeepSeq (NFData)
+import           Data.List ((\\), delete, intersperse, intersectBy)
+import           GHC.Generics (Generic)
 
 ---- EXPORTED FUNCTIONS ----
 
