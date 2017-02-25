@@ -14,6 +14,7 @@ import qualified Data.Graph.Inductive.PatriciaTree as PT
 import qualified Data.Graph.Inductive.Query.BFS as BFS
 import qualified Data.Graph.Inductive.Query.DFS as DFS
 import           Data.List (intersect, nub, find)
+import qualified Data.Map as Map
 import           Data.Maybe (mapMaybe, listToMaybe, fromJust)
 import           LogicSolver.Utils
 import           Sudoku
@@ -22,20 +23,20 @@ import qualified Text.PrettyPrint as P
 
 simpleColoringSimplifier :: Simplifier
 simpleColoringSimplifier sudoku = findFirst tryChain (findChains sudoku)
-  where trySet chain@(Chain { chainValue = value, chainAssignments = assignments}) =
+  where trySet chain@Chain{ chainValue = value, chainAssignments = assignments} =
           do let squaresToSet = findTwiceInGroupSet sudoku chain
              guard (not (null squaresToSet))
              addLog (P.text "Simple coloring: Setting squares" <+> doc squaresToSet
                      <+> P.text "to" <+> doc value <+> P.text "based on connected chain"
-                     <+> doc [coord | (coord, _) <- assignments])
+                     <+> doc (Map.keys assignments))
              return (foldl (\sud coord -> assignValue sud (coord, value)) sudoku squaresToSet)
-        tryRemoval chain@(Chain { chainValue = value, chainAssignments = assignments}) =
+        tryRemoval chain@Chain{ chainValue = value, chainAssignments = assignments} =
           do let removals = findTwoColorRemovals sudoku chain
              guard (not (null removals))
              addLog (P.text "Simple coloring: Removing" <+> doc value
                      <+> P.text "from" <+> doc removals
                      <+> P.text "based on connected chain" 
-                     <+> doc [coord | (coord, _) <- assignments])
+                     <+> doc (Map.keys assignments))
              return (removePossibleValues sudoku [(coord, [value]) | coord <- removals])
         tryChain chain = trySet chain <|> tryRemoval chain
 
@@ -43,7 +44,7 @@ simpleColoringSimplifier sudoku = findFirst tryChain (findChains sudoku)
 data Color = Black | White deriving (Eq, Show)
 
 data Chain = Chain { chainValue :: Value,
-                     chainAssignments :: [(Coord, Color)],
+                     chainAssignments :: Map.Map Coord Color,
                      neighbors :: Coord -> [Coord]
                    }
 
@@ -57,9 +58,10 @@ colors, then one of them must be the chain value, so the chain value can't be in
 the other squares connected to both A and B.
 -}
 findTwoColorRemovals :: Sudoku -> Chain -> [Coord]
-findTwoColorRemovals sudoku (Chain { chainValue = value, chainAssignments = assignments}) =
+findTwoColorRemovals sudoku Chain{ chainValue = value, chainAssignments = assignments} =
   -- Find pairs of squares in chain with different color assignments
-  nub $ do (coord1, coord2) <- [(coord1, coord2) | [(coord1, color1), (coord2, color2)] <- ssolk 2 assignments,
+  nub $ do (coord1, coord2) <- [(coord1, coord2) |
+                                [(coord1, color1), (coord2, color2)] <- ssolk 2 (Map.assocs assignments),
                                 color1 /= color2]
            -- Find squares connected to both coord1 and coord2 which contain value as a possibility
            [coord | (coord, Empty vals) <- connectedSquares sudoku coord1 `intersect` connectedSquares sudoku coord2,
@@ -69,10 +71,11 @@ isConnected :: Sudoku -> Coord -> Coord -> Bool
 isConnected sudoku coord1 coord2 = coord1 `elem` [coord | (coord, _) <- connectedSquares sudoku coord2]
 
 findTwiceInGroupSet :: Sudoku -> Chain -> [Coord]
-findTwiceInGroupSet sudoku (Chain { chainAssignments = assignments}) =
-  let offColor = listToMaybe [color1 | [(coord1, color1), (coord2, color2)] <- ssolk 2 assignments,
+findTwiceInGroupSet sudoku Chain{ chainAssignments = assignments} =
+  let offColor = listToMaybe [color1 |
+                              [(coord1, color1), (coord2, color2)] <- ssolk 2 (Map.assocs assignments),
                               color1 == color2 && isConnected sudoku coord1 coord2]
-  in maybe [] (\color -> [coord | (coord, color') <- assignments, color /= color']) offColor
+  in maybe [] (\color -> [coord | (coord, color') <- Map.assocs assignments, color /= color']) offColor
 
 
 -- Return a list of colored chains for a sudoku board.
@@ -106,10 +109,10 @@ chainsForValue groups value =
         -- Assign alternating color to each level
         let levels = BFS.level (head comp) graph
             colors = [Black, White]
-            levelAssignments = [(vertexToCoord v, colors !! (level `mod` 2)) |
-                                (v, level) <- levels]
+            levelAssignments = Map.fromList [(vertexToCoord v, colors !! (level `mod` 2)) |
+                                             (v, level) <- levels]
             compGraph = GR.subgraph comp graph
-            neighborsFn coord = map vertexToCoord (GR.neighbors compGraph (coordToVertex coord))
+            neighborsFn coord = fmap vertexToCoord (GR.neighbors compGraph (coordToVertex coord))
         in Chain value levelAssignments neighborsFn
    in [compToChain comp | comp <- comps]
 
@@ -118,16 +121,14 @@ multiColoringForValue groups value sudoku = findFirst id simplifications
   where
     chains = chainsForValue groups value
     
-    coord2Chain :: Coord -> Maybe Chain
-    coord2Chain coord =
-      find (\(Chain { chainAssignments = assigns}) ->
-              (any (\(coord', _) -> coord == coord') assigns)) chains
+    chainOfCoord :: Coord -> Maybe Chain
+    chainOfCoord coord = find (Map.member coord . chainAssignments) chains
 
     simplifications :: [SimplifiedSudoku]
     simplifications = do
       [chain1, chain2] <- ssolk 2 chains
-      (chain1Coord, _) <- chainAssignments chain1
-      (chain2Coord, _) <- chainAssignments chain2
+      chain1Coord <- Map.keys (chainAssignments chain1)
+      chain2Coord <- Map.keys (chainAssignments chain2)
       guard (arePeers chain1Coord chain2Coord)
 
       -- Now we know chain1Coord and chain2Coord are weakly connected
@@ -149,7 +150,7 @@ multiColoringForValue groups value sudoku = findFirst id simplifications
       -- elimination cell is part of a chain, then we know that that's
       -- the off color of that chain, and can set all the 'on' cells of
       -- that chain.  Otherwise we just perform the eliminations found.
-      let chainCoords = mapMaybe (\coord -> do chain <- coord2Chain coord
+      let chainCoords = mapMaybe (\coord -> do chain <- chainOfCoord coord
                                                return (chain, coord)) eliminations
       in if null chainCoords then doEliminations eliminations else doAssignments chainCoords
 
@@ -169,8 +170,8 @@ multiColoringForValue groups value sudoku = findFirst id simplifications
 
     coordsToSetForChain :: (Chain, Coord) -> [Coord]
     coordsToSetForChain (Chain { chainAssignments = assignments }, chainCoord) =
-      let (_, offColor) = fromJust (find ((== chainCoord) . fst) assignments)
-      in [coord | (coord, color) <- assignments, color /= offColor]
+      let offColor = fromJust $ Map.lookup chainCoord assignments
+      in [coord | (coord, color) <- Map.assocs assignments, color /= offColor]
                        
       
     
