@@ -47,7 +47,9 @@ solveForGroupType groupType otherGroupType otherComponent ruleName n sudoku =
   where makeValMap group = 
           let m = IM.fromListWith (++) [(v, [c]) | (c, Empty vs) <- groupSquares sudoku group, v <- vs] 
           in IM.filter (between 2 n . length) m
+
         trySetOfGroups set = findFirst (tryValue set) (IM.keys (snd (head set)))
+
         tryValue set val = do
           let coordss = mapMaybe (IM.lookup val . snd) set
               coords = List.concat coordss
