@@ -10,7 +10,6 @@ where
 import           Control.Applicative ((<|>))
 import           Control.Monad (guard)
 import qualified Data.Graph.Inductive.Graph as GR
-import qualified Data.Graph.Inductive.PatriciaTree as PT
 import qualified Data.Graph.Inductive.Query.BFS as BFS
 import qualified Data.Graph.Inductive.Query.DFS as DFS
 import           Data.List (intersect, nub, find)
@@ -91,28 +90,22 @@ findLinks groups value = mapMaybe findLink groups
             [coord1, coord2] -> Just (coord1, coord2)
             _                -> Nothing
 
-coordToVertex :: Coord -> GR.Node
-coordToVertex (row, col) = (row - 1) * 9 + (col - 1)
-
-vertexToCoord :: GR.Node -> Coord
-vertexToCoord vertex = ((vertex `div` 9) + 1, (vertex `mod` 9) + 1)
 
 chainsForValue :: Groups -> Value -> [Chain]
 chainsForValue groups value =
-  let links = findLinks groups value
-      edges = [(coordToVertex c1, coordToVertex c2) | (c1, c2) <- links]
-      nodes = concat [[a, b] | (a, b) <- edges]
-      graph = GR.mkUGraph nodes edges :: PT.Gr () ()
+  let edges = findLinks groups value
+      (graph, coordToVertex) = graphFromEdges edges
       -- Connected components correspond to chains
       comps = DFS.components graph
       compToChain comp =
         -- Assign alternating color to each level
         let levels = BFS.level (head comp) graph
             colors = [Black, White]
-            levelAssignments = Map.fromList [(vertexToCoord v, colors !! (level `mod` 2)) |
+            levelAssignments = Map.fromList [(fromJust $ GR.lab graph v, colors !! (level `mod` 2)) |
                                              (v, level) <- levels]
             compGraph = GR.subgraph comp graph
-            neighborsFn coord = fmap vertexToCoord (GR.neighbors compGraph (coordToVertex coord))
+            neighborsFn coord = mapMaybe (GR.lab compGraph) 
+                                         (GR.neighbors compGraph (fromJust $ coordToVertex coord))
         in Chain value levelAssignments neighborsFn
    in [compToChain comp | comp <- comps]
 

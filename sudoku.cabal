@@ -42,7 +42,7 @@ executable LogicSolver
   main-is:             LogicSolver.hs
   
   -- Modules included in this executable, other than Main.
-  other-modules: LogicSolver.Utils, LogicSolver.SimpleColoring, LogicSolver.YWing, LogicSolver.BasicFish
+  other-modules: LogicSolver.Utils, LogicSolver.SimpleColoring, LogicSolver.YWing, LogicSolver.BasicFish LogicSolver.MedusaColoring
   
   -- LANGUAGE extensions used by modules in this package.
   --  other-extensions:

@@ -6,7 +6,6 @@ module Main ( main
             , hiddenSetSimplifier
             , nakedSetSimplifier
             , intersectionRemovalSimplifier
-            , blockOfCoord
             , isInGroup
             , solve
             , parseOpts
@@ -19,6 +18,7 @@ import qualified Control.Parallel.Strategies as PS
 import           Data.List (partition, (\\), union, groupBy, sortBy)
 import           Data.Maybe (listToMaybe, fromJust, isJust)
 import           LogicSolver.BasicFish
+import           LogicSolver.MedusaColoring
 import           LogicSolver.SimpleColoring
 import           LogicSolver.Utils
 import           LogicSolver.YWing
@@ -153,10 +153,6 @@ nakedSetSimplifier s = findFirst tryN [2..8]
 
 -- some utility functions
 
--- | Return the block that coord is in
-blockOfCoord :: Coord -> Group
-blockOfCoord (r, c) = Block (((r-1) `div` 3)*3 + 1, ((c-1) `div` 3)*3 + 1)
-
 -- | Return true if a Coord is in a group
 isInGroup                 :: Coord -> Group -> Bool
 isInGroup (r, _) (Row r') = r == r'
@@ -272,6 +268,7 @@ simplifiers = [ forcedMoveSimplifier
               , simpleJellyfishSimplifier
               , simpleSquirmbagSimplifier
               , multiColoringSimplifier
+              , medusaSimplifier
               ]
 
 isSolution :: Sudoku -> Bool

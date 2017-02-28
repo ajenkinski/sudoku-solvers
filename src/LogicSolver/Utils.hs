@@ -3,7 +3,12 @@ module LogicSolver.Utils where
 import           Control.Applicative (Alternative)
 import           Control.Monad.Writer (WriterT, tell)
 import           Data.Foldable (asum)
+import qualified Data.Graph.Inductive.Basic as Basic
+import qualified Data.Graph.Inductive.Graph as GR
+import qualified Data.Graph.Inductive.NodeMap as NM
+import qualified Data.Graph.Inductive.PatriciaTree as PT
 import           Data.List (tails)
+import qualified Data.Map as Map
 import           Sudoku
 import qualified Text.PrettyPrint as P
 
@@ -46,3 +51,14 @@ ssolk k xs
     | k == 0    = [[]]
     | otherwise =
         [x:ss | (x:rest) <- tails xs, ss <- ssolk (k-1) rest]
+
+-- Creates an undirected labeled graph from a list of edges, specified
+-- as pairs of node labels.  Returns the graph, and a function mapping
+-- node labels to node identifiers
+graphFromEdges :: Ord a => [(a, a)] -> (PT.Gr a (), a -> Maybe GR.Node)
+graphFromEdges edges =
+  let nodes = concat [[l1, l2] | (l1, l2) <- edges]
+      ledges = [(l1, l2, ()) | (l1, l2) <- edges]
+      (graph, _) = NM.mkMapGraph nodes ledges
+      labToNode = Map.fromList [(lab, node) | (node, lab) <- GR.labNodes graph]
+  in (Basic.undir graph, (`Map.lookup` labToNode))

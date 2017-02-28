@@ -11,6 +11,7 @@ module Sudoku (
               , Sudoku
               , get
               , parseSudoku, mkSudoku
+              , blockOfCoord
               , groupSquares, allGroups, allGroupSquares
               , connectedSquares, arePeers, peersOfCoords
               , emptySquares, allSquares
@@ -76,7 +77,7 @@ get s c = board s ! c
 
 -- A datatype to specify groups of cells on a board.
 
-data Group = Row Int | Col Int | Block Coord deriving (Show,Eq)
+data Group = Row Int | Col Int | Block Coord deriving (Show,Eq,Ord)
 
 -- Constructs a Sudoku board from a list of Values, which represent
 -- the values of the board cells in row major order, with 0s for
@@ -143,6 +144,11 @@ parseSudoku str = initialSudoku (map readValue str)
 
 ---------------------------------
 -- Functions on Groups
+
+-- Return a normalized block of a coord, with coord normalized to the
+-- upper left corner of the block
+blockOfCoord :: Coord -> Group
+blockOfCoord (row, col) = Block ((row - 1) `div` 3 * 3 + 1, (col - 1) `div` 3 * 3 + 1)
 
 groupSquares                   :: Sudoku -> Group -> [Element]
 groupSquares sud (Row r)       = rows sud ! r
