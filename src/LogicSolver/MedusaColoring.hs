@@ -126,7 +126,7 @@ medusaOneCellContradictionSimplifier chain board = findFirst tryCoord byCoord
 
 {-
 Looks for a contradiction in a medusa chain, where two candidates for
-a single digit in a single group have the same color. This identifyies
+a single digit in a single group have the same color. This identifies
 that as the 'off' color in the chain, thereby allowing assigning all
 the 'on' colored cells.
 -}
