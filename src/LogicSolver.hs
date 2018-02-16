@@ -1,17 +1,16 @@
 -- A program to solve sudoku puzzles
 
-module Main ( main
-            , forcedMoveSimplifier
-            , pinnedSquareSimplifier
-            , hiddenSetSimplifier
-            , nakedSetSimplifier
-            , intersectionRemovalSimplifier
-            , isInGroup
-            , solve
-            , parseOpts
-) where
+module Main (main
+            ,forcedMoveSimplifier
+            ,pinnedSquareSimplifier
+            ,hiddenSetSimplifier
+            ,nakedSetSimplifier
+            ,intersectionRemovalSimplifier
+            ,isInGroup
+            ,solve
+            ,parseOpts) where
 
-import           Control.Applicative ((<|>), empty)
+import           Control.Applicative ((<|>))
 import           Control.Monad (foldM, when, guard)
 import           Control.Monad.Writer (runWriterT, lift)
 import qualified Control.Parallel.Strategies as PS
@@ -53,11 +52,10 @@ pinnedSquareSimplifier s = findFirst tryGroup allGroups
     tryGroup group = findFirst tryValue unassigned
         where
           unassigned = [1..9] \\ [v | (_,Assigned v) <- squares]
-          tryValue v =
-              case [c | (c, Empty vs) <- squares, v `elem` vs] of
-                [c] -> do addLog (describe group (c,v))
-                          return (assignValue s (c,v))
-                _ -> empty
+          tryValue v = 
+            do c <- lift $ listToMaybe [c | (c, Empty vs) <- squares, v `elem` vs]
+               addLog (describe group (c,v))
+               return (assignValue s (c,v))
           squares = groupSquares s group
     describe group (c,v) =
         P.text "Pinned square: in" <+> doc group
@@ -131,7 +129,7 @@ hiddenSetSimplifier s = findFirst tryN [2..8]
                 <+> P.text "in" <+> doc group
                 <> P.text ".  Deleting" <+> doc to_remove
 
--- | Like hiddenSetSimplifier, but implements the rule that a set
+-- | Like hiddenSetSimplifier, but implements the rule that if a set
 -- of N cells collectively contains exactly N values, then no other
 -- cell in that group can contain any of those N values.
 

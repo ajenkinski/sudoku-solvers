@@ -1,7 +1,6 @@
 {-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 
-module Sudoku (
-               Value
+module Sudoku ( Value
               , Square(..), Group(..)
               , verboseShow
               , isEmpty, isAssigned
@@ -15,8 +14,7 @@ module Sudoku (
               , groupSquares, allGroups, allGroupSquares
               , connectedSquares, arePeers, peersOfCoords
               , emptySquares, allSquares
-              , assignValue, removePossibleValues
-) where
+              , assignValue, removePossibleValues) where
 
 import           Control.DeepSeq (NFData)
 import           Data.Array ((//), (!))

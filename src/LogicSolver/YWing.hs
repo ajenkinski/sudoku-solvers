@@ -64,6 +64,6 @@ isYWing (a, b) (x1, y1) (x2, y2) =
       pivotw2 = [a, b] `intersect` [x2, y2]
       wc      = [x1, y1] `intersect` [x2, y2]
   in case (pivotw1, pivotw2, wc) of
-       ([a'], [b'], [c]) -> if a' /= b' then Just c else Nothing
-       _                 -> Nothing
+       ([a'], [b'], [c]) | a' /= b' -> Just c
+       _                            -> Nothing
 

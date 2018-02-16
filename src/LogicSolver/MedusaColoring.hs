@@ -14,18 +14,6 @@ import           Sudoku
 import           Text.PrettyPrint ((<+>), (<>))
 import qualified Text.PrettyPrint as P
 
--- Use 3D-medusa strategy (http://sudopedia.enjoysudoku.com/3D_Medusa.html)
-medusaSimplifier :: Simplifier
-medusaSimplifier board = 
-  let chains = findMedusaChains board
-      trySimplifier f = findFirst (`f` board) chains
-  in findFirst trySimplifier [medusaOneCellContradictionSimplifier
-                             ,medusaOneGroupContradictionSimplifier
-                             ,medusaOneCellContradictionSimplifier
-                             ,medusaOneCellEliminationSimplifier
-                             ,medusaOneGroupEliminationSimplifier
-                             ,medusaIntersectionEliminationSimplifier]
-
 
 {-
 Implement 3D Medusa coloring, as described here:
@@ -46,6 +34,19 @@ candidates. Once this graph is constructed, we can apply connected
 components and bivalue coloring algorithms to it just as in simple
 coloring, to find bi-colored chains.
 -}
+
+
+-- Use 3D-medusa strategy (http://sudopedia.enjoysudoku.com/3D_Medusa.html)
+medusaSimplifier :: Simplifier
+medusaSimplifier board = 
+  let chains = findMedusaChains board
+      trySimplifier f = findFirst (`f` board) chains
+  in findFirst trySimplifier [medusaOneCellContradictionSimplifier
+                             ,medusaOneGroupContradictionSimplifier
+                             ,medusaOneCellContradictionSimplifier
+                             ,medusaOneCellEliminationSimplifier
+                             ,medusaOneGroupEliminationSimplifier
+                             ,medusaIntersectionEliminationSimplifier]
 
 {- Find all conjugate pairs in a board.  A conjugate pair is a pair of
  cells in a group which are the only two cells in that group which
