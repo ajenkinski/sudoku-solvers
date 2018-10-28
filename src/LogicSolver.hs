@@ -21,6 +21,7 @@ import           LogicSolver.MedusaColoring
 import           LogicSolver.SimpleColoring
 import           LogicSolver.Utils
 import           LogicSolver.YWing
+import           Prelude hiding ((<>))
 import           Sudoku
 import           System.Console.GetOpt
 import           System.Environment (getArgs)

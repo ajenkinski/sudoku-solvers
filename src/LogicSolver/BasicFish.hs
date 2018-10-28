@@ -19,10 +19,10 @@ import qualified Data.IntMap as IM
 import qualified Data.List as List
 import           Data.Maybe (mapMaybe)
 import           LogicSolver.Utils
+import           Prelude hiding ((<>))
 import           Sudoku
 import           Text.PrettyPrint ((<>), (<+>))
 import qualified Text.PrettyPrint as P
-
 
 simpleXWingSimplifier     = simpleFishSimplifier "X-Wing" 2
 simpleSwordfishSimplifier = simpleFishSimplifier "Swordfish" 3

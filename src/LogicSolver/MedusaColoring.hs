@@ -10,10 +10,10 @@ import qualified Data.List as List
 import qualified Data.Map as Map
 import           Data.Maybe (fromJust)
 import           LogicSolver.Utils
+import           Prelude hiding ((<>))
 import           Sudoku
 import           Text.PrettyPrint ((<+>), (<>))
 import qualified Text.PrettyPrint as P
-
 
 {-
 Implement 3D Medusa coloring, as described here:
